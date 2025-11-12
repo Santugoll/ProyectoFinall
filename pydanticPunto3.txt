@@ -1,0 +1,66 @@
+PYDANTIC:
+
+from pydantic import BaseModel, Field
+from typing import Optional
+from datetime import datetime
+from bson import ObjectId
+
+# -----------------------------
+# Soporte para ObjectId en Pydantic
+# -----------------------------
+class PyObjectId(ObjectId):
+    @classmethod
+    def _get_validators_(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        if not ObjectId.is_valid(v):
+            raise ValueError("Invalid ObjectId")
+        return ObjectId(v)
+
+    @classmethod
+    def _modify_schema_(cls, field_schema):
+        field_schema.update(type="string")
+
+# -----------------------------
+# Categoria
+# -----------------------------
+class CategoriaBase(BaseModel):
+    nombre_categoria: str = Field(..., min_length=2, max_length=100)
+    Descripcion: Optional[str] = Field(None, max_length=255)
+
+class CategoriaCreate(CategoriaBase):
+    pass
+
+class Categoria(CategoriaBase):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="id")
+    _id: Optional[PyObjectId] = Field(default=None, alias="_id")
+
+    class Config:
+        allow_population_by_field_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {ObjectId: str}
+
+# -----------------------------
+# Producto
+# -----------------------------
+class ProductoBase(BaseModel):
+    id_categoria: str = Field(..., description="ID de la categoría en formato string")
+    nombre_producto: str = Field(..., min_length=2, max_length=100)
+    precio: int = Field(..., ge=1, description="Precio mínimo 1")
+    cantidad: int = Field(..., ge=1, description="Cantidad mínima 1")
+    fecha_creacion: datetime
+
+class ProductoCreate(ProductoBase):
+    pass
+
+class Producto(ProductoBase):
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="id")
+    _id: Optional[PyObjectId] = Field(default=None, alias="_id")
+
+    class Config:
+        allow_population_by_field_name = True
+        arbitrary_types_allowed = True
+
+        json_encoders = {ObjectId: str}
